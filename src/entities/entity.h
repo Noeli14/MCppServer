@@ -31,7 +31,9 @@ struct Position {
 // Hash function for Position to use in unordered_map
 struct PositionHash {
     std::size_t operator()(const Position& pos) const {
-        return std::hash<int32_t>()(pos.x) ^ std::hash<int32_t>()(pos.y) ^ std::hash<int32_t>()(pos.z);
+        return std::hash<int32_t>()(pos.x) ^
+			std::rotl(std::hash<int32_t>()(pos.y), 1) ^
+			std::rotl(std::hash<int32_t>()(pos.z), 2);
     }
 };
 
