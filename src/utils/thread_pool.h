@@ -61,4 +61,6 @@ auto thread_pool::enqueue(F&& f, Args&&... args)
     return res;
 }
 
+void set_thread_name(std::thread& thread, const char* threadName);
+
 #endif //THREADPOOL_H

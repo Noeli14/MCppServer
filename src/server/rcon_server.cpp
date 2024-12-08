@@ -5,6 +5,7 @@
 #include "utils/le32toh.h"
 #include "core/utils.h"
 #include "utils/translation.h"
+#include "utils/thread_pool.h"
 
 
 RCONServer::RCONServer(int port, const std::string& password)
@@ -17,6 +18,7 @@ RCONServer::~RCONServer() {
 bool RCONServer::start() {
     running = true;
     listenThread = std::thread(&RCONServer::listenLoop, this);
+	set_thread_name(listenThread, "RconServer");
     logMessage("RCON server started on port " + std::to_string(port), LOG_INFO);
     return true;
 }
