@@ -232,6 +232,7 @@ void tickingSystem() {
 void startMiningScheduler() {
     miningRunning = true;
     miningThread = std::thread(miningScheduler, std::ref(globalPlayers), std::ref(miningRunning));
+	set_thread_name(miningThread, "miningScheduler");
 }
 
 void stopMiningScheduler() {
@@ -351,11 +352,13 @@ void runServer() {
             handleConsoleCommand(input);
         }
     });
+	set_thread_name(consoleThread, "ConsoleThread");
 
     // Detach the thread to allow it to run independently
     consoleThread.detach();
 
     std::thread tickThread(tickingSystem);
+	set_thread_name(tickThread, "TickThread");
     tickThread.detach();
 
     while (true) {
