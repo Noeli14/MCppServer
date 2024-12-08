@@ -32,7 +32,7 @@ void QueryServer::start() {
     serverAddr.sin_port = htons(port);
 
     if (bind(udpSocket, reinterpret_cast<sockaddr*>(&serverAddr), sizeof(serverAddr)) == SOCKET_ERROR) {
-        logMessage("[QueryServer] Failed to bind UDP socket for Query Protocol on port " + port, LOG_ERROR);
+        logMessage("[QueryServer] Failed to bind UDP socket for Query Protocol on port " + std::to_string(port), LOG_ERROR);
 #ifdef _WIN32
         closesocket(udpSocket);
         WSACleanup();
