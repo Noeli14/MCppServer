@@ -44,6 +44,7 @@ void QueryServer::start() {
 
     running.store(true);
     listenerThread = std::thread(&QueryServer::listenLoop, this);
+	set_thread_name(listenerThread, "QueryServer");
     logMessage("[QueryServer] Query Protocol server started on UDP port " + std::to_string(port) + ".", LOG_INFO);
 }
 

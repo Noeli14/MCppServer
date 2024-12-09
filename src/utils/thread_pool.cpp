@@ -1,5 +1,11 @@
 #include "thread_pool.h"
 
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(__linux__)
+#include <pthread.h>
+#endif
+
 thread_pool::thread_pool(size_t numThreads) : stop(false) {
     for(size_t i = 0;i<numThreads;++i)
         workers.emplace_back(
@@ -23,6 +29,13 @@ thread_pool::thread_pool(size_t numThreads) : stop(false) {
                 }
             }
         );
+	
+    for(size_t i = 0;i<numThreads;++i)
+	{
+		std::string threadName = "PoolWkr:";
+		threadName += std::to_string(i);
+		set_thread_name(workers[i], threadName.data());
+	}
 }
 
 // Destructor joins all threads
@@ -32,4 +45,15 @@ thread_pool::~thread_pool()
     condition.notify_all();
     for(std::thread &worker: workers)
         worker.join();
+}
+
+void set_thread_name(std::thread& thread, const char* threadName)
+{
+	const auto handle = thread.native_handle();
+#if defined(_WIN32)
+	const DWORD threadId = ::GetThreadID(static_cast<HANDLE>(handle));
+	SetThreadDescription(threadId, threadName);
+#elif defined(__linux__)
+	pthread_setname_np(handle, threadName);
+#endif
 }
