@@ -690,7 +690,7 @@ void handlePlayerActions(ClientConnection& client, const std::vector<uint8_t> & 
             break;
         default:
             // Unknown action
-            logMessage("Received unknown player action: " + static_cast<int>(action), LOG_WARNING);
+            logMessage("Received unknown player action: " + std::to_string(static_cast<int>(action)), LOG_WARNING);
             break;
     }
 }
@@ -2017,7 +2017,7 @@ void handleLoginRequest(ClientConnection& client, RegistryManager& registryManag
     size_t ackIndex = 0;
     int32_t ackPacketID = parseVarInt(ackPacket, ackIndex);
     if (ackPacketID != LOGIN_ACKNOWLEDGE) {
-        logMessage("Expected Login Acknowledged packet (ID 0x03), but received packet ID: " + ackPacketID, LOG_ERROR);
+        logMessage("Expected Login Acknowledged packet (ID 0x03), but received packet ID: " + std::to_string(ackPacketID), LOG_ERROR);
         return;
     }
 
@@ -2078,7 +2078,7 @@ void handleClient(SocketType clientSocket) {
                 handleLoginRequest(client, registryManager);
             }
         } else {
-            logMessage("Invalid Handshake packet ID: " + packetID, LOG_ERROR);
+            logMessage("Invalid Handshake packet ID: " + std::to_string(packetID), LOG_ERROR);
             return;
         }
     } catch (const std::exception& e) {

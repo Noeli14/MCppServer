@@ -503,7 +503,7 @@ std::vector<uint8_t> serializeChunkSections(const std::array<std::optional<MemCh
             size_t numberOfLongs;
             std::vector<uint32_t> unpackedBlockIndices = unpackBits(section.value().blockIndices, bitsPerEntryBlock);
             if (unpackedBlockIndices.size() != 4096) {
-                logMessage("Unpacked block indices size is not 4096: " + unpackedBlockIndices.size(), LOG_ERROR);
+                logMessage("Unpacked block indices size is not 4096: " + std::to_string(unpackedBlockIndices.size()), LOG_ERROR);
             }
             std::vector<uint8_t> encodedBlockData = encodePalettedData(unpackedBlockIndices, bitsPerEntryBlock, numberOfLongs);
 
@@ -1018,7 +1018,7 @@ std::shared_ptr<Chunk> loadChunkFromDisk(int chunkX, int chunkZ) {
             // Calculate the section index
             int sectionIndex = sectionY - MIN_Y / SECTION_HEIGHT;
             if (sectionIndex < 0 || sectionIndex >= NUM_SECTIONS) {
-                logMessage("Invalid sectionY: " + static_cast<int>(sectionY), LOG_ERROR);
+                logMessage("Invalid sectionY: " + std::to_string(static_cast<int>(sectionY)), LOG_ERROR);
                 continue;
             }
 
