@@ -49,11 +49,8 @@ thread_pool::~thread_pool()
 
 void set_thread_name(std::thread& thread, const char* threadName)
 {
-	const auto handle = thread.native_handle();
-#if defined(_WIN32)
-	const DWORD threadId = ::GetThreadID(static_cast<HANDLE>(handle));
-	SetThreadDescription(threadId, threadName);
-#elif defined(__linux__)
+#if defined(__linux__)
+    const auto handle = thread.native_handle();
 	pthread_setname_np(handle, threadName);
 #endif
 }
