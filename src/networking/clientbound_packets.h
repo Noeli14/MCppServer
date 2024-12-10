@@ -85,6 +85,8 @@ void sendOpenScreen(ClientConnection& client, uint8_t windowID, uint8_t windowTy
 void sendBlockDestroyStage(const std::shared_ptr<Player>& player, const Position &blockPos, int8_t stage);
 void sendUpdateAttributes(ClientConnection& client, int32_t entityID, const std::vector<Attribute>& attributes);
 void sendPlayerAbilities(ClientConnection& client, uint8_t flags, float flyingSpeed, float fovModifier);
+void sendSetHeldItem(ClientConnection& client, int8_t slot);
+void sendFeatureFlags(ClientConnection& client, const std::vector<std::string>& flags);
 
 template<typename... Args>
 void sendTranslatedChatMessage(const std::string& key, const bool actionBar = false, const std::string& color = "white", const std::vector<std::shared_ptr<Player>>* players = nullptr, bool log = true, Args&&... args) {

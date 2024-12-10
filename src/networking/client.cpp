@@ -499,7 +499,7 @@ void spawnBlockDrops(int32_t x, int32_t y, int32_t z, int16_t blockState) {
     }
 }
 
-void handleFinishedDigging(ClientConnection& client, const std::shared_ptr<Player> & player, const std::tuple<int32_t, int32_t, int32_t> & blockPosition, Block& block, const std::shared_ptr<Chunk>& chunk, Face face, size_t sequence) {
+void handleFinishedDigging(ClientConnection& client, const std::shared_ptr<Player> & player, const std::tuple<int32_t, int32_t, int32_t> & blockPosition, Block& block, const std::shared_ptr<Chunk>& chunk, Face face, size_t sequence, bool dropBlock) {
     int32_t x = std::get<0>(blockPosition);
     int32_t y = std::get<1>(blockPosition);
     int32_t z = std::get<2>(blockPosition);
@@ -545,7 +545,7 @@ void handleFinishedDigging(ClientConnection& client, const std::shared_ptr<Playe
     sendBlockDestroyStage(player, blockPos, 10);
 
     // Send block drop items to the player (if not in creative mode)
-    if (player->gameMode != 1) {
+    if (player->gameMode != CREATIVE && dropBlock) {
         spawnBlockDrops(x, y, z, oldBlockStateID);
     }
 }
@@ -559,12 +559,11 @@ void removePlayerFromAllChunks(const std::shared_ptr<Player> & player) {
 }
 
 void miningScheduler(std::unordered_map<std::string, std::shared_ptr<Player>> &players, std::atomic<bool> &running) {
-    const int tickRate = 20; // 20 ticks per second
+    const int tickRate = serverConfig.ticksPerSecond;
     while (running) {
         auto tickStart = std::chrono::steady_clock::now();
 
         for (auto &player: players | std::views::values) {
-            std::lock_guard<std::mutex> lock(player->miningMutex);
             for (auto it = player->currentMining.begin(); it != player->currentMining.end(); ) {
                 MiningProgress &progress = it->second;
                 double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - progress.startTime).count();
@@ -582,13 +581,7 @@ void miningScheduler(std::unordered_map<std::string, std::shared_ptr<Player>> &p
 
                 if (elapsed >= progress.totalTime) {
                     // Mining complete
-                    sendBlockDestroyStage(player, progress.blockPos, 10); // Final stage or block break
-
-                    // Handle block breaking logic
-                    // e.g., remove the block, drop items, etc.
-                    // You might need to call handleFinishedDigging here or similar
-
-                    it = player->currentMining.erase(it);
+                    sendBlockDestroyStage(player, progress.blockPos, 10); // Remove destroy progress
                 } else {
                     ++it;
                 }
@@ -627,8 +620,8 @@ void handlePlayerActions(ClientConnection& client, const std::vector<uint8_t> & 
         case STARTED_DIGGING: {
             DiggingInfo diggingInfo = calculateDiggingSpeed(block.blockStateID, player);
             if(player->gameMode == CREATIVE || (diggingInfo.diggingTime == 0 && diggingInfo.canHarvest)) {
-                handleFinishedDigging(client, player, std::tuple(x, y, z), block, chunk, face, sequence);
-            } else if (diggingInfo.canHarvest) {
+                handleFinishedDigging(client, player, std::tuple(x, y, z), block, chunk, face, sequence, diggingInfo.canHarvest);
+            } else if (diggingInfo.canHarvest || diggingInfo.diggingTime > 0) {
                 // Initiate mining with destroy stages
                 Position blockPos = Position{ x, y, z };
                 MiningProgress progress;
@@ -637,6 +630,7 @@ void handlePlayerActions(ClientConnection& client, const std::vector<uint8_t> & 
                 progress.currentStage = 0;
                 progress.blockPos = blockPos;
                 progress.sequence = sequence;
+                progress.canHarvest = diggingInfo.canHarvest;
 
                 {
                     std::lock_guard lock(player->miningMutex);
@@ -666,18 +660,19 @@ void handlePlayerActions(ClientConnection& client, const std::vector<uint8_t> & 
         case FINISHED_DIGGING: {
             Position blockPos = Position{ x, y, z };
             bool shouldHandle = false;
+            bool canHarvest = false;
             {
-                std::lock_guard<std::mutex> lock(player->miningMutex);
+                std::lock_guard lock(player->miningMutex);
                 auto it = player->currentMining.find(blockPos);
                 if (it != player->currentMining.end()) {
                     shouldHandle = true;
+                    canHarvest = it->second.canHarvest;
                     player->currentMining.erase(it);
                 }
             }
             if (shouldHandle) {
-                //handleFinishedDigging(client, player, std::make_tuple(x, y, z), block, chunk, face, sequence);
+                handleFinishedDigging(client, player, std::make_tuple(x, y, z), block, chunk, face, sequence, canHarvest);
             }
-            handleFinishedDigging(client, player, std::make_tuple(x, y, z), block, chunk, face, sequence);
             break;
         }
         case DROP_ITEM_STACK:
@@ -712,6 +707,7 @@ void handleSetCreativeModeSlot(SocketType socket, const std::vector<uint8_t> & p
     // 2.3 Number of Components to Add (Optional VarInt)
     if (slotDataParsed.itemCount > 0) {
         slotDataParsed.numCompToAdd = parseVarInt(packetData, index);
+        logMessage("Number of components to add: " + std::to_string(*slotDataParsed.numCompToAdd), LOG_DEBUG);
 
         // 2.4 Components to Add (Array of Components)
         if (slotDataParsed.numCompToAdd && *slotDataParsed.numCompToAdd > 0) {
@@ -1748,6 +1744,8 @@ bool handleConfigurationState(ClientConnection& client, RegistryManager& registr
     }
 
     sendServerPluginMessages(client);
+
+    sendFeatureFlags(client, {"minecraft:vanilla"});
 
     sendKnownPacksPacket(client);
 

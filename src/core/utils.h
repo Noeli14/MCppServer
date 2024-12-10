@@ -137,5 +137,6 @@ double getRandomDouble(double min, double max);
 bool checkCollision(Item& item, BoundingBox& collidedBlockBox, Axis axis);
 double calculateFinalVelocity(double initialVelocity, double drag, double acceleration, int ticksPassed, DragApplicationOrder order);
 DiggingInfo calculateDiggingSpeed(int16_t blockstate, const std::shared_ptr<Player>& player);
+std::vector<std::string> splitString(const std::string& str, char delimiter);
 
 #endif // UTILS_H

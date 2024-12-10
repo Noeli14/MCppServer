@@ -310,8 +310,7 @@ bool sendUpdateTagsPacket(ClientConnection& client) {
     packetData.push_back(UPDATE_TAGS);
 
     // Number of Tags to update
-    // In this case, only updating "minecraft:worldgen/biome"
-    writeVarInt(packetData, 1);
+    writeVarInt(packetData, 2);
 
     // --- Registry 1: minecraft:worldgen/biome ---
     writeString(packetData, "minecraft:worldgen/biome"); // Registry Identifier
@@ -347,6 +346,18 @@ bool sendUpdateTagsPacket(ClientConnection& client) {
                 auto id = biomes[stripNamespace(biome)].id;
                 writeVarInt(packetData, id);
             }
+        }
+    }
+
+    // --- Registry 2: minecraft:block ---
+    writeString(packetData, "minecraft:block"); // Registry Identifier
+
+    writeVarInt(packetData, blockMatTags.size());
+    for (const auto& [tag, blockIDs] : blockMatTags) {
+        writeString(packetData, tag);
+        writeVarInt(packetData, static_cast<int32_t>(blockIDs.size()));
+        for (const auto& blockID : blockIDs) {
+            writeVarInt(packetData, blockID);
         }
     }
 
@@ -1674,6 +1685,29 @@ void sendPlayerAbilities(ClientConnection& client, const uint8_t flags, const fl
 
     // Walking Speed (Float)
     writeFloat(packet, fovModifier);
+
+    sendPacket(client, packet);
+}
+
+void sendSetHeldItem(ClientConnection& client, const int8_t slot) {
+    std::vector<uint8_t> packet;
+    writeByte(packet, SET_HELD_ITEM);
+
+    // Slot (Byte)
+    writeByte(packet, slot);
+
+    sendPacket(client, packet);
+}
+
+void sendFeatureFlags(ClientConnection& client, const std::vector<std::string>& flags) {
+    std::vector<uint8_t> packet;
+    writeByte(packet, FEATURE_FLAGS);
+
+    // Flags (Identifier Array)
+    writeVarInt(packet, static_cast<int32_t>(flags.size()));
+    for (const auto& flag : flags) {
+        writeString(packet, flag);
+    }
 
     sendPacket(client, packet);
 }

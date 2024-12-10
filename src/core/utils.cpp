@@ -1075,6 +1075,12 @@ DiggingInfo calculateDiggingSpeed(int16_t blockstate, const std::shared_ptr<Play
     bool canHarvest = false;
     double speedMultiplier = 1.0;
 
+    const int heldItemID = player->getHeldItemID();
+    std::string toolName = "";
+    if (heldItemID >= 0 && heldItemID < static_cast<int>(itemIDs.size())) {
+        toolName = itemIDs[heldItemID].name;
+    }
+
     // Find the target block based on blockstate
     const BlockData* targetBlock = nullptr;
     for (const auto& blockPair : blocks) {
@@ -1096,8 +1102,24 @@ DiggingInfo calculateDiggingSpeed(int16_t blockstate, const std::shared_ptr<Play
     }
 
     // Check if the player's held tool is the best tool for the block
-    const int heldItemID = player->getHeldItemID();
     bool isBestTool = false;
+    if (targetBlock->harvestTools.empty()) {
+        canHarvest = true;
+        // TODO: Replace with tags
+        if (targetBlock->material.find("mineable/shovel") != std::string::npos) {
+            if (toolName.find("shovel") != std::string::npos) {
+                isBestTool = true;
+            }
+        } else if (targetBlock->material.find("mineable/axe") != std::string::npos) {
+            if (toolName.find("axe") != std::string::npos) {
+                isBestTool = true;
+            }
+        } else if (targetBlock->material.find("mineable/pickaxe") != std::string::npos) {
+            if (toolName.find("pickaxe") != std::string::npos) {
+                isBestTool = true;
+            }
+        }
+    }
     for (const auto& toolID : targetBlock->harvestTools) {
         if (toolID == heldItemID) {
             isBestTool = true;
@@ -1123,11 +1145,7 @@ DiggingInfo calculateDiggingSpeed(int16_t blockstate, const std::shared_ptr<Play
 
     // Determine the tool's speed multiplier
     double toolSpeedMultiplier = 1.0;
-    std::string toolName = "";
-    if (heldItemID >= 0 && heldItemID < static_cast<int>(itemIDs.size())) {
-        toolName = itemIDs[heldItemID].name;
-    }
-
+    // TODO: Replace with tags
     if (toolName.find("shears") != std::string::npos) {
         // Special handling for shears
         // TODO: Adjust toolSpeedMultiplier based on specific block types (e.g., wool, cobwebs)
@@ -1222,4 +1240,19 @@ DiggingInfo calculateDiggingSpeed(int16_t blockstate, const std::shared_ptr<Play
     info.speed = speedMultiplier;
 
     return info;
+}
+
+std::vector<std::string> splitString(const std::string& str, char delimiter) {
+    std::vector<std::string> tokens;
+    std::string token;
+    std::stringstream ss(str);
+
+    while (std::getline(ss, token, delimiter)) {
+        // Optional: Trim whitespace from token if necessary
+        if (!token.empty()) {
+            tokens.push_back(token);
+        }
+    }
+
+    return tokens;
 }

@@ -57,6 +57,8 @@
 #define OPEN_SCREEN 0x33
 #define BLOCK_DESTROY_STAGE 0x06
 #define UPDATE_ATTRIBUTES 0x75
+#define SET_HELD_ITEM 0x53
+#define FEATURE_FLAGS 0x0C
 
 // Client -> Server Packets
 #define STATUS_REQUEST 0x00

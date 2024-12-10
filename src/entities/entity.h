@@ -50,8 +50,10 @@ struct MiningProgress {
     int8_t currentStage;
     Position blockPos;
     int32_t sequence;
+    bool canHarvest;
 
-    MiningProgress() : totalTime(0), currentStage(0), sequence(0) {}
+    MiningProgress() : totalTime(0), currentStage(0), sequence(0), canHarvest(false) {
+    }
 };
 
 struct Attribute {

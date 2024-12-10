@@ -39,7 +39,7 @@ void MemChunkSection::setBlockIndex(int32_t index, uint8_t paletteIndex) {
     int bitStart = bitOffset % 8;
 
     // Ensure blockIndices has enough bytes
-    size_t totalBits = (index + 1) * bitsPerEntry;
+    size_t totalBits = static_cast<size_t>(index + 1) * bitsPerEntry;
     size_t totalBytes = (totalBits + 7) / 8;
     if (blockIndices.size() < totalBytes) {
         blockIndices.resize(totalBytes, 0);
@@ -284,7 +284,7 @@ std::vector<uint8_t> encodeBlockIndices(const std::vector<uint8_t>& indices, int
 
 std::vector<ChunkCoordinates> getChunksInView(int32_t centerChunkX, int32_t centerChunkZ, int viewDistance) {
     std::vector<ChunkCoordinates> chunks;
-    chunks.reserve((2 * viewDistance + 1) * (2 * viewDistance + 1));
+    chunks.reserve(static_cast<int64_t>(2 * viewDistance + 1) * (2 * viewDistance + 1));
 
     for (int dx = -viewDistance; dx <= viewDistance; ++dx) {
         for (int dz = -viewDistance; dz <= viewDistance; ++dz) {

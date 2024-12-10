@@ -51,6 +51,7 @@ inline EntityManager entityManager;
 
 inline std::unordered_map<std::string, BiomeData> biomes;
 inline std::unordered_map<std::string, BlockData> blocks;
+inline std::unordered_map<std::string, std::vector<int>> blockMatTags;
 inline std::unordered_map<std::string, ItemData> items;
 inline std::unordered_map<int, ItemData> itemIDs;
 inline std::unordered_map<std::string, std::unordered_map<std::string, std::string>> translations;

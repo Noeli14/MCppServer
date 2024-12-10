@@ -321,6 +321,7 @@ void runServer() {
     translations = loadTranslations("../resources/languages.json");
     loadCollisions("../resources/blockCollisionShapes.json");
     craftingRecipes = loadCraftingRecipes("../resources/recipes/crafting_recipes.json");
+    blockMatTags = getBlockMatTags(blocks);
 
     auto endTime = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsedSeconds = endTime - startTime;

@@ -247,3 +247,19 @@ void loadCollisions(const std::string &filePath) {
         logMessage("No 'shapes' section found in " + filePath, LOG_ERROR);
     }
 }
+
+std::unordered_map<std::string, std::vector<int>> getBlockMatTags(std::unordered_map<std::string, BlockData>& blocks) {
+    std::unordered_map<std::string, std::vector<int>> materialMap;
+
+    // Iterate through each block in the input map
+    for (const auto &blockData: blocks | std::views::values) {
+        std::vector<std::string> materials = splitString(blockData.material, ';');
+        for (const std::string& material : materials) {
+            if (!material.empty()) {
+                materialMap[material].push_back(blockData.id);
+            }
+        }
+    }
+
+    return materialMap;
+}

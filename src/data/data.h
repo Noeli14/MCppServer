@@ -60,5 +60,6 @@ std::unordered_map<std::string, BlockData> loadBlocks(const std::string& filePat
 std::unordered_map<std::string, ItemData> loadItems(const std::string& filePath);
 std::unordered_map<int, ItemData> loadItemIDs(const std::string& filePath);
 void loadCollisions(const std::string& filePath);
+std::unordered_map<std::string, std::vector<int>> getBlockMatTags(std::unordered_map<std::string, BlockData>& blocks);
 
 #endif //DATA_H
