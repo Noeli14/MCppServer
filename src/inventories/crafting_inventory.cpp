@@ -40,65 +40,128 @@ bool CraftingInventory::FindMatchingRecipe(const std::vector<uint16_t> &inputIte
 }
 
 
-bool CraftingInventory::MatchesRecipe(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight) {
+bool CraftingInventory::MatchesRecipe(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight) const {
     if (!recipe.shapeless) {
         // Shaped recipe
-        if (recipe.width > craftWidth || recipe.height > craftHeight) return false;
-
-        // Possible offsets
-        // xOffsets = [0 .. craftWidth - recipe.width]
-        // yOffsets = [0 .. craftHeight - recipe.height]
-        for (int yOff = 0; yOff <= craftHeight - recipe.height; yOff++) {
-            for (int xOff = 0; xOff <= craftWidth - recipe.width; xOff++) {
-                if (CheckShapedRecipePlacement(recipe, inputItems, craftWidth, craftHeight, xOff, yOff)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return MatchesShapedRecipe(recipe, inputItems, craftWidth, craftHeight);
     } else {
-        // Shapeless
-        std::unordered_map<uint16_t,int> needed;
-        for (uint16_t ing : recipe.ingredients) {
-            if (ing != 0) {
-                needed[ing]++;
-            }
-        }
-
-        for (auto iid : inputItems) {
-            if (iid != 0) {
-                if (needed.find(iid) == needed.end()) {
-                    return false; // Extra item
-                } else {
-                    needed[iid]--;
-                    if (needed[iid] < 0) {
-                        return false; // More of this item than needed
-                    }
-                }
-            }
-        }
-
-        for (auto &kv : needed) {
-            if (kv.second > 0) return false; // Not all ingredients provided
-        }
-
-        return true;
+        // Shapeless recipe
+        return MatchesShapelessRecipe(recipe, inputItems);
     }
 }
 
-bool CraftingInventory::CheckShapedRecipePlacement(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight, int xOff, int yOff) {
+bool CraftingInventory::MatchesShapelessRecipe(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems) const {
+    // Create a copy of input items to track used items
+    std::vector<uint16_t> remainingItems = inputItems;
+
+    // Iterate over each ingredient in the recipe
+    for (const auto &ingredientOptions : recipe.ingredients) {
+        bool matched = false;
+
+        for (const auto& ingredient : ingredientOptions) {
+            if (std::holds_alternative<uint16_t>(ingredient)) {
+                // Ingredient is an item ID
+                uint16_t requiredItem = std::get<uint16_t>(ingredient);
+                auto it = std::find(remainingItems.begin(), remainingItems.end(), requiredItem);
+                if (it != remainingItems.end()) {
+                    matched = true;
+                    // Remove the matched item
+                    *it = 0;
+                    break;
+                }
+            } else if (std::holds_alternative<std::string>(ingredient)) {
+                // Ingredient is a tag
+                std::string tagName = std::get<std::string>(ingredient);
+                if (itemTags.find(tagName) != itemTags.end()) {
+                    const std::vector<int> &tagBlocks = itemTags.at(tagName);
+                    auto it = std::find_if(remainingItems.begin(), remainingItems.end(),
+                                           [&](uint16_t itemId) {
+                                               return itemId != 0 && std::find(tagBlocks.begin(), tagBlocks.end(), itemId) != tagBlocks.end();
+                                           });
+                    if (it != remainingItems.end()) {
+                        matched = true;
+                        *it = 0; // matched, clear item
+                        break;
+                    }
+                } else {
+                    logMessage("Unknown tag: " + tagName, LOG_WARNING);
+                }
+            }
+        }
+
+        if (!matched) {
+            // Required ingredient not found
+            return false;
+        }
+    }
+
+    // Ensure no extra items remain for shapeless recipes
+    for (auto item : remainingItems) {
+        if (item != 0) {
+            // Extra items present, fail
+            return false;
+        }
+    }
+
+    // All ingredients matched and no extras
+    return true;
+}
+
+bool CraftingInventory::MatchesShapedRecipe(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight) const {
+    if (recipe.width > craftWidth || recipe.height > craftHeight) return false;
+
+    // Possible offsets
+    for (int yOff = 0; yOff <= craftHeight - recipe.height; yOff++) {
+        for (int xOff = 0; xOff <= craftWidth - recipe.width; xOff++) {
+            if (CheckShapedRecipePlacement(recipe, inputItems, craftWidth, craftHeight, xOff, yOff)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool CraftingInventory::CheckShapedRecipePlacement(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight, int xOff, int yOff) const {
     auto getInput = [&](int x, int y) -> uint16_t {
-        int index = x + y*craftWidth;
+        int index = x + y * craftWidth;
         return inputItems[index];
     };
 
     // Check every cell of the recipe
     for (int ry = 0; ry < recipe.height; ry++) {
         for (int rx = 0; rx < recipe.width; rx++) {
-            uint16_t required = recipe.ingredients[rx + ry * recipe.width];
+            const auto &ingredientOptions = recipe.ingredients[rx + ry * recipe.width];
             uint16_t actual = getInput(rx + xOff, ry + yOff);
-            if (actual != required) {
+
+            bool matched = false;
+            if (ingredientOptions.empty() && actual == 0) {
+                continue; // Empty cell
+            }
+            for (const auto& ingredient : ingredientOptions) {
+                if (std::holds_alternative<uint16_t>(ingredient)) {
+                    uint16_t requiredItem = std::get<uint16_t>(ingredient);
+                    if (actual == requiredItem) {
+                        matched = true;
+                        break;
+                    }
+                }
+                else if (std::holds_alternative<std::string>(ingredient)) {
+                    std::string tagName = std::get<std::string>(ingredient);
+                    if (itemTags.find(tagName) != itemTags.end()) {
+                        const std::vector<int> &tagBlocks = itemTags.at(tagName);
+                        if (std::find(tagBlocks.begin(), tagBlocks.end(), actual) != tagBlocks.end()) {
+                            matched = true;
+                            break;
+                        }
+                    }
+                    else {
+                        logMessage("Unknown tag: " + tagName, LOG_WARNING);
+                    }
+                }
+            }
+
+            if (!matched) {
                 return false;
             }
         }
@@ -122,14 +185,24 @@ bool CraftingInventory::CheckShapedRecipePlacement(const CraftingRecipe &recipe,
 
 void CraftingInventory::ConsumeCraftingIngredients() {
     int totalSlots = craftWidth * craftHeight;
+
+    std::vector<std::pair<uint16_t,int>> indexedItems;
+    indexedItems.reserve(totalSlots);
+    for (int i = 0; i < totalSlots; i++) {
+        SlotData &slot = getSlotData(i + 1);
+        indexedItems.push_back({slot.itemId.value(), i+1});
+    }
+
     std::vector<uint16_t> inputItems(totalSlots);
     for (int i = 0; i < totalSlots; i++) {
-        SlotData &slot = getSlotData(i+1);
+        SlotData &slot = getSlotData(i + 1);
         inputItems[i] = slot.itemId.value();
     }
 
     CraftingRecipe matchedRecipe;
     bool found = false;
+    int xOff = 0, yOff = 0;
+
     for (auto &pair : craftingRecipes) {
         const CraftingRecipe &recipe = pair.second;
         if (MatchesRecipe(recipe, inputItems, craftWidth, craftHeight)) {
@@ -143,52 +216,125 @@ void CraftingInventory::ConsumeCraftingIngredients() {
     if (!found) return;
 
     if (!matchedRecipe.shapeless) {
-        int xOff, yOff;
+        // Shaped recipe
         if (!FindShapedRecipePlacement(matchedRecipe, inputItems, craftWidth, craftHeight, xOff, yOff)) {
             return; // Should not happen if MatchesRecipe was true
         }
 
         // Consume ingredients
-        for (int y = 0; y < matchedRecipe.height; y++) {
-            for (int x = 0; x < matchedRecipe.width; x++) {
-                uint16_t ing = matchedRecipe.ingredients[x + y*matchedRecipe.width];
-                if (ing != 0) {
-                    int inputIndex = (x + xOff) + (y + yOff)*craftWidth;
-                    int slotIndex = inputIndex + 1;
-                    SlotData &sd = getSlotData(slotIndex);
-                    if (sd.itemCount > 0) {
-                        sd.itemCount--;
-                        if (sd.itemCount == 0) {
-                            sd.itemId = 0;
+        for (int ry = 0; ry < matchedRecipe.height; ry++) {
+            for (int rx = 0; rx < matchedRecipe.width; rx++) {
+                const auto &ingredientOptions = matchedRecipe.ingredients[rx + ry * matchedRecipe.width];
+                uint16_t actual = getSlotData((xOff + rx) + (yOff + ry) * craftWidth + 1).itemId.value();
+
+                bool consumed = false;
+                for (const auto& ingredient : ingredientOptions) {
+                    if (std::holds_alternative<uint16_t>(ingredient)) {
+                        uint16_t requiredItem = std::get<uint16_t>(ingredient);
+                        if (actual == requiredItem) {
+                            SlotData &sd = getSlotData((xOff + rx) + (yOff + ry) * craftWidth + 1);
+                            if (sd.itemCount > 0) {
+                                sd.itemCount--;
+                                if (sd.itemCount == 0) {
+                                    sd.itemId = 0;
+                                }
+                            }
+                            consumed = true;
+                            break;
                         }
                     }
+                    else if (std::holds_alternative<std::string>(ingredient)) {
+                        std::string tagName = std::get<std::string>(ingredient);
+                        if (itemTags.find(tagName) != itemTags.end()) {
+                            const std::vector<int> &tagBlocks = itemTags.at(tagName);
+                            if (std::find(tagBlocks.begin(), tagBlocks.end(), actual) != tagBlocks.end()) {
+                                SlotData &sd = getSlotData((xOff + rx) + (yOff + ry) * craftWidth + 1);
+                                if (sd.itemCount > 0) {
+                                    sd.itemCount--;
+                                    if (sd.itemCount == 0) {
+                                        sd.itemId = 0;
+                                    }
+                                }
+                                consumed = true;
+                                break;
+                            }
+                        }
+                        else {
+                            logMessage("Unknown tag: " + tagName, LOG_WARNING);
+                        }
+                    }
+                }
+
+                if (!consumed && actual != 0) {
+                    logMessage("Failed to consume ingredient at slot: " + std::to_string((xOff + rx) + (yOff + ry) * craftWidth + 1), LOG_WARNING);
                 }
             }
         }
     } else {
-        // Shapeless
-        std::unordered_map<uint16_t,int> needed;
-        for (uint16_t ing : matchedRecipe.ingredients) {
-            if (ing != 0) {
-                needed[ing]++;
-            }
-        }
+        // Shapeless recipe
+       std::vector<std::pair<uint16_t,int>> remainingItems = indexedItems;
 
-        for (int i = 1; i <= totalSlots; i++) {
-            SlotData &sd = getSlotData(i);
-            if (sd.itemId != 0 && needed.contains(sd.itemId.value()) && needed[sd.itemId.value()] > 0) {
-                sd.itemCount--;
-                needed[sd.itemId.value()]--;
-                if (sd.itemCount == 0) {
-                    sd.itemId = 0;
+        for (const auto &ingredientOptions : matchedRecipe.ingredients) {
+            bool matched = false;
+
+            for (const auto& ingredient : ingredientOptions) {
+                if (std::holds_alternative<uint16_t>(ingredient)) {
+                    uint16_t requiredItem = std::get<uint16_t>(ingredient);
+                    auto it = std::find_if(remainingItems.begin(), remainingItems.end(),
+                                           [&](const std::pair<uint16_t,int>& p) {
+                                               return p.first == requiredItem;
+                                           });
+                    if (it != remainingItems.end()) {
+                        // Consume from the corresponding slot
+                        SlotData &sd = getSlotData(it->second);
+                        if (sd.itemCount > 0) {
+                            sd.itemCount--;
+                            if (sd.itemCount == 0) {
+                                sd.itemId = 0;
+                            }
+                            remainingItems.erase(it);
+                            matched = true;
+                            break;
+                        }
+                    }
+                } else if (std::holds_alternative<std::string>(ingredient)) {
+                    std::string tagName = std::get<std::string>(ingredient);
+                    if (itemTags.find(tagName) == itemTags.end()) {
+                        logMessage("Unknown tag: " + tagName, LOG_WARNING);
+                        continue;
+                    }
+                    const std::vector<int> &tagBlocks = itemTags.at(tagName);
+
+                    auto it = std::find_if(remainingItems.begin(), remainingItems.end(),
+                                           [&](const std::pair<uint16_t,int>& p) {
+                                               return std::find(tagBlocks.begin(), tagBlocks.end(), p.first) != tagBlocks.end();
+                                           });
+                    if (it != remainingItems.end()) {
+                        // Consume from the corresponding slot
+                        SlotData &sd = getSlotData(it->second);
+                        if (sd.itemCount > 0) {
+                            sd.itemCount--;
+                            if (sd.itemCount == 0) {
+                                sd.itemId = 0;
+                            }
+                            remainingItems.erase(it);
+                            matched = true;
+                            break;
+                        }
+                    }
                 }
+            }
+
+            if (!matched) {
+                logMessage("Failed to consume a required ingredient for shapeless recipe.", LOG_WARNING);
+                return;
             }
         }
     }
 }
 
 
-bool CraftingInventory::FindShapedRecipePlacement(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight, int &outXOff, int &outYOff) {
+bool CraftingInventory::FindShapedRecipePlacement(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight, int &outXOff, int &outYOff) const {
     if (recipe.width > craftWidth || recipe.height > craftHeight) return false;
 
     for (int yOff = 0; yOff <= craftHeight - recipe.height; yOff++) {

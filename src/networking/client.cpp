@@ -707,7 +707,6 @@ void handleSetCreativeModeSlot(SocketType socket, const std::vector<uint8_t> & p
     // 2.3 Number of Components to Add (Optional VarInt)
     if (slotDataParsed.itemCount > 0) {
         slotDataParsed.numCompToAdd = parseVarInt(packetData, index);
-        logMessage("Number of components to add: " + std::to_string(*slotDataParsed.numCompToAdd), LOG_DEBUG);
 
         // 2.4 Components to Add (Array of Components)
         if (slotDataParsed.numCompToAdd && *slotDataParsed.numCompToAdd > 0) {

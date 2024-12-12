@@ -231,7 +231,7 @@ void loadCollisions(const std::string &filePath) {
             if (value.is_array()) {
                 for (const auto& shape : value) {
                     if (shape.is_array() && shape.size() == 6) {
-                        BoundingBox bbox;
+                        BoundingBox bbox{};
                         bbox.minX = shape[0].get<double>();
                         bbox.minY = shape[1].get<double>();
                         bbox.minZ = shape[2].get<double>();
@@ -248,18 +248,76 @@ void loadCollisions(const std::string &filePath) {
     }
 }
 
-std::unordered_map<std::string, std::vector<int>> getBlockMatTags(std::unordered_map<std::string, BlockData>& blocks) {
-    std::unordered_map<std::string, std::vector<int>> materialMap;
+std::unordered_map<std::string, std::vector<int>> loadBlockTags(std::unordered_map<std::string, BlockData>& blocks, const std::string& filePath) {
+    std::unordered_map<std::string, std::vector<int>> tagMap;
 
-    // Iterate through each block in the input map
-    for (const auto &blockData: blocks | std::views::values) {
-        std::vector<std::string> materials = splitString(blockData.material, ';');
-        for (const std::string& material : materials) {
-            if (!material.empty()) {
-                materialMap[material].push_back(blockData.id);
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        logMessage("Failed to open block_tags JSON file: " + filePath, LOG_ERROR);
+        return {};
+    }
+
+    nlohmann::json j;
+    try {
+        file >> j;
+    } catch (const nlohmann::json::parse_error& e) {
+        logMessage("JSON parse error in " + filePath + ": " + e.what(), LOG_ERROR);
+        return {};
+    }
+
+    if (j.is_object()) {
+        for (auto& [tag, value] : j.items()) {
+            if (value.is_array()) {
+                for (const auto& block : value) {
+                    if (block.is_string()) {
+                        std::string blockName = block.get<std::string>();
+                        if (blocks.contains(blockName)) {
+                            tagMap[tag].push_back(blocks[blockName].id);
+                        } else {
+                            logMessage("Block not found for tag: " + blockName, LOG_ERROR);
+                        }
+                    }
+                }
             }
         }
     }
 
-    return materialMap;
+    return tagMap;
+}
+
+std::unordered_map<std::string, std::vector<int>> loadItemTags(std::unordered_map<std::string, ItemData>& items, const std::string& filePath) {
+    std::unordered_map<std::string, std::vector<int>> tagMap;
+
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        logMessage("Failed to open item_tags JSON file: " + filePath, LOG_ERROR);
+        return {};
+    }
+
+    nlohmann::json j;
+    try {
+        file >> j;
+    } catch (const nlohmann::json::parse_error& e) {
+        logMessage("JSON parse error in " + filePath + ": " + e.what(), LOG_ERROR);
+        return {};
+    }
+
+    if (j.is_object()) {
+        for (auto& [tag, value] : j.items()) {
+            if (value.is_array()) {
+                for (const auto& item : value) {
+                    if (item.is_string()) {
+                        auto itemName = item.get<std::string>();
+                        if (items.contains(itemName)) {
+                            tagMap[tag].push_back(items[itemName].id);
+                        } else {
+                            logMessage("Item not found for tag: " + itemName, LOG_ERROR);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return tagMap;
 }

@@ -19,13 +19,14 @@ public:
 
     void UpdateCraftingResult();
     void ConsumeCraftingIngredients();
+    bool FindShapedRecipePlacement(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight, int &outXOff, int &outYOff) const;
     void OnCraftingSlotChanged();
     int32_t CraftableRecipe();
-
     bool FindMatchingRecipe(const std::vector<uint16_t> &inputItems, SlotData &resultSlotData) const;
-    static bool MatchesRecipe(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight);
-    static bool CheckShapedRecipePlacement(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight, int xOff, int yOff);
-    static bool FindShapedRecipePlacement(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight, int &outXOff, int &outYOff);
+    bool MatchesRecipe(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight) const;
+    bool MatchesShapelessRecipe(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems) const;
+    bool MatchesShapedRecipe(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight) const;
+    bool CheckShapedRecipePlacement(const CraftingRecipe &recipe, const std::vector<uint16_t> &inputItems, int craftWidth, int craftHeight, int xOff, int yOff) const;
 
 };
 

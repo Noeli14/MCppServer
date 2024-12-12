@@ -352,8 +352,8 @@ bool sendUpdateTagsPacket(ClientConnection& client) {
     // --- Registry 2: minecraft:block ---
     writeString(packetData, "minecraft:block"); // Registry Identifier
 
-    writeVarInt(packetData, blockMatTags.size());
-    for (const auto& [tag, blockIDs] : blockMatTags) {
+    writeVarInt(packetData, blockTags.size());
+    for (const auto& [tag, blockIDs] : blockTags) {
         writeString(packetData, tag);
         writeVarInt(packetData, static_cast<int32_t>(blockIDs.size()));
         for (const auto& blockID : blockIDs) {
@@ -1578,12 +1578,14 @@ void sendUpdateRecipes(ClientConnection& client) {
     for (const auto&[key, CraftingRecipe] : craftingRecipes) {
         writeBytes(packet, CraftingRecipe.serialize(key));
     }
-    */
+
 
     writeVarInt(packet, 1);
     writeBytes(packet, craftingRecipes.find(36)->second.serialize(36));
 
+
     sendPacket(client, packet);
+    */
 }
 
 void sendContainerContent(ClientConnection& client, uint8_t windowID, int32_t stateID, Inventory& inventory) {

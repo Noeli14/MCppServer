@@ -3,13 +3,14 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 class CraftingRecipe {
 public:
     uint16_t result;
     uint8_t resultCount;
-    std::vector<uint16_t> ingredients;
+    std::vector<std::vector<std::variant<uint16_t, std::string>>> ingredients; // uint16_t = ID / std::string = Tag
     bool shapeless;
     uint8_t width;
     uint8_t height;
