@@ -41,7 +41,7 @@ MCpp Server is a high-performance Minecraft server developed entirely in C++. De
 
 ### 🧩 Supported and WIP Features
 - Login
-    - [x] Authentication (online mdoe)
+    - [x] Authentication (online mode)
     - [x] Encryption
     - [x] Packet Compression
 - Server Configuration
